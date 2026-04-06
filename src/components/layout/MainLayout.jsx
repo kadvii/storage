@@ -121,6 +121,15 @@ export default function MainLayout() {
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>
+
+        <footer className="border-t border-borderbase bg-secondary px-4 py-3 text-center">
+          <p className="text-xs text-textmuted">
+            Made with <span className="text-red-400">♥</span> by{' '}
+            <span className="font-semibold text-accent">MosaB</span>
+            {' & '}
+            <span className="font-semibold text-accent">Abdulqader Firas</span>
+          </p>
+        </footer>
       </div>
     </div>
   )
