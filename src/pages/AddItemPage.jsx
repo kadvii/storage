@@ -2,48 +2,53 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CATEGORIES, useWarehouse } from '../context/WarehouseContext'
 
+export const STATUS_OPTIONS = ['Available', 'In Use', 'Damaged']
+
 const initialErrors = {
   name: '',
-  quantity: '',
   category: '',
+  serial: '',
 }
 
-const fieldClass =
-  'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 shadow-sm outline-none ring-indigo-500/0 transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20'
+const fieldClass = 'w-full rounded-xl border border-borderbase bg-primary px-3 py-2.5 text-textbase shadow-sm outline-none ring-transparent transition focus:border-accent focus:ring-4 focus:ring-accent/20'
 
 export default function AddItemPage() {
-  const { addItem } = useWarehouse()
+  const { addItem, itemTypes } = useWarehouse()
   const navigate = useNavigate()
 
-  const [name, setName] = useState('')
-  const [quantity, setQuantity] = useState('')
   const [category, setCategory] = useState('')
+  const [name, setName] = useState('')
+  const [serial, setSerial] = useState('')
+  const [description, setDescription] = useState('')
+  const [status, setStatus] = useState(STATUS_OPTIONS[0])
+  const [imagePreview, setImagePreview] = useState(null)
+  
   const [errors, setErrors] = useState(initialErrors)
+
+  const availableTypes = category ? (itemTypes[category] || []) : []
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const objectUrl = URL.createObjectURL(file)
+      setImagePreview(objectUrl)
+    }
+  }
 
   function validate() {
     const next = { ...initialErrors }
-    const trimmed = name.trim()
-    if (!trimmed) {
-      next.name = 'Item name is required.'
-    } else if (trimmed.length < 2) {
-      next.name = 'Use at least 2 characters.'
-    }
 
-    const q = Number(quantity)
-    if (quantity === '' || Number.isNaN(q)) {
-      next.quantity = 'Enter a valid quantity.'
-    } else if (!Number.isInteger(q)) {
-      next.quantity = 'Quantity must be a whole number.'
-    } else if (q < 1) {
-      next.quantity = 'Quantity must be at least 1.'
-    }
-
-    if (!category) {
-      next.category = 'Pick a category.'
+    if (!category) next.category = 'Pick a category.'
+    if (!name) next.name = 'Please select an item type/name.'
+    
+    if (!serial.trim()) {
+      next.serial = 'Serial Number is required.'
+    } else if (serial.length < 3) {
+      next.serial = 'Serial number too short.'
     }
 
     setErrors(next)
-    return !next.name && !next.quantity && !next.category
+    return !next.name && !next.category && !next.serial
   }
 
   function handleSubmit(e) {
@@ -51,142 +56,186 @@ export default function AddItemPage() {
     if (!validate()) return
 
     addItem({
-      name: name.trim(),
-      quantity: Number(quantity),
+      name,
       category,
+      serial,
+      description,
+      status,
+      image: imagePreview
     })
 
-    setName('')
-    setQuantity('')
     setCategory('')
+    setName('')
+    setSerial('')
+    setDescription('')
+    setStatus(STATUS_OPTIONS[0])
+    setImagePreview(null)
     setErrors(initialErrors)
-    navigate('/dashboard', {
+    navigate('/all-items', {
       replace: false,
-      state: { toast: 'Item added successfully.' },
+      state: { toast: 'Asset successfully registered.' },
     })
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          Add item
+        <h1 className="text-2xl font-bold tracking-tight text-textbase sm:text-3xl">
+          Register Asset
         </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Register a new line in inventory. Data stays in memory (mock only).
+        <p className="mt-1 text-sm text-textmuted">
+          Add a distinctly serialized unique asset to the inventory Tracker.
         </p>
       </div>
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6"
+        className="rounded-2xl border border-borderbase bg-secondary p-6 shadow-sm"
         noValidate
       >
-        <div>
-          <label
-            htmlFor="item-name"
-            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Item name
-          </label>
-          <input
-            id="item-name"
-            name="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={fieldClass}
-            placeholder="e.g. Forklift battery"
-            aria-invalid={Boolean(errors.name)}
-            aria-describedby={errors.name ? 'item-name-error' : undefined}
-          />
-          {errors.name ? (
-            <p id="item-name-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {errors.name}
-            </p>
-          ) : null}
-        </div>
+        <div className="grid gap-8 lg:grid-cols-2">
 
-        <div>
-          <label
-            htmlFor="item-qty"
-            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Quantity
-          </label>
-          <input
-            id="item-qty"
-            name="quantity"
-            inputMode="numeric"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ''))}
-            className={fieldClass}
-            placeholder="e.g. 25"
-            aria-invalid={Boolean(errors.quantity)}
-            aria-describedby={
-              errors.quantity ? 'item-qty-error' : undefined
-            }
-          />
-          {errors.quantity ? (
-            <p id="item-qty-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {errors.quantity}
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <label
-            htmlFor="item-category"
-            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Category
-          </label>
-          <select
-            id="item-category"
-            name="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className={`${fieldClass} bg-white dark:bg-slate-800`}
-            aria-invalid={Boolean(errors.category)}
-            aria-describedby={
-              errors.category ? 'item-category-error' : undefined
-            }
-          >
-            <option value="">Select a category</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          {errors.category ? (
-            <p
-              id="item-category-error"
-              className="mt-1 text-sm text-red-600 dark:text-red-400"
+          {/* LEFT — IMAGE UPLOAD */}
+          <div className="flex flex-col">
+            <label className="mb-2 block text-sm font-medium text-textbase">Asset Photo</label>
+            <div
+              className="flex-1 min-h-[320px] bg-primary border-2 border-dashed border-borderbase rounded-2xl overflow-hidden flex flex-col justify-center items-center relative group cursor-pointer hover:border-accent transition-colors"
             >
-              {errors.category}
-            </p>
-          ) : null}
-        </div>
+              {imagePreview ? (
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
+              ) : (
+                <div className="text-center p-6">
+                  <svg className="mx-auto h-16 w-16 text-textmuted group-hover:text-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="mt-3 text-sm text-textmuted group-hover:text-textbase font-medium">Click to upload photo</p>
+                  <p className="mt-1 text-xs text-textmuted">PNG, JPG, GIF up to 10MB</p>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            onClick={() => {
-              setName('')
-              setQuantity('')
-              setCategory('')
-              setErrors(initialErrors)
-            }}
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 hover:bg-indigo-700 dark:shadow-indigo-900/40"
-          >
-            Save item
-          </button>
+          {/* RIGHT — FIELDS */}
+          <div className="flex flex-col gap-5">
+
+            <div>
+              <label htmlFor="item-category" className="mb-1.5 block text-sm font-medium text-textbase">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="item-category"
+                name="category"
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value)
+                  setName('')
+                }}
+                className={`${fieldClass}`}
+              >
+                <option value="">Select a category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="item-name" className="mb-1.5 block text-sm font-medium text-textbase">
+                Item Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="item-name"
+                name="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={`${fieldClass}`}
+                disabled={!category}
+              >
+                <option value="">Select an item type...</option>
+                {availableTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="item-serial" className="mb-1.5 block text-sm font-medium text-textbase">
+                Serial Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="item-serial"
+                type="text"
+                value={serial}
+                onChange={(e) => setSerial(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+                className={`${fieldClass} uppercase font-mono tracking-widest`}
+                placeholder="E.G.  SN-1234-A"
+              />
+              {errors.serial && <p className="mt-1 text-sm text-red-500">{errors.serial}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="item-status" className="mb-1.5 block text-sm font-medium text-textbase">
+                Initial Status
+              </label>
+              <select
+                id="item-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className={`${fieldClass}`}
+              >
+                {STATUS_OPTIONS.map((so) => (
+                  <option key={so} value={so}>{so}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label htmlFor="item-desc" className="mb-1.5 block text-sm font-medium text-textbase">
+                Description
+              </label>
+              <textarea
+                id="item-desc"
+                rows={5}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className={`${fieldClass} resize-none`}
+                placeholder="Detailed specifications, notes, or assignment info..."
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2 border-t border-borderbase">
+              <button
+                type="button"
+                className="rounded-xl border border-borderbase bg-primary px-5 py-2.5 text-sm font-semibold text-textbase hover:bg-hoverbase transition-colors"
+                onClick={() => {
+                  setCategory('')
+                  setName('')
+                  setSerial('')
+                  setDescription('')
+                  setStatus(STATUS_OPTIONS[0])
+                  setImagePreview(null)
+                  setErrors(initialErrors)
+                }}
+              >
+                Reset Form
+              </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-accent px-6 py-2.5 text-sm font-semibold text-btntext shadow-md hover:opacity-90 transition-opacity"
+              >
+                Register Item
+              </button>
+            </div>
+
+          </div>
         </div>
       </form>
     </div>

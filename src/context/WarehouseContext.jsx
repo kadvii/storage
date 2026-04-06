@@ -15,27 +15,44 @@ function nowIso() {
   return new Date().toISOString()
 }
 
+const INITIAL_TYPES = {
+  Hardware: ['Laptop', 'Desktop Monitor', 'Network Switch', 'Keyboard', 'Keyboard & Mouse Combo', 'Printer'],
+  Software: ['Operating System', 'WMS License', 'Antivirus', 'Utility']
+}
+
 /** Seed inventory for the dashboard */
 const INITIAL_ITEMS = [
   {
     id: '1',
-    name: 'Steel brackets',
-    quantity: 240,
+    name: 'Laptop',
+    quantity: 1,
+    serial: 'ASUS-ROG-STRIX',
+    description: 'ASUS ROG Strix G18 G815LM-S8090 - 18" 144Hz - Intel Core Ultra 9',
+    status: 'Available',
+    image: 'https://placehold.co/600x400/0F172A/22C55E?text=ASUS+ROG+Strix',
     category: 'Hardware',
     updatedAt: nowIso(),
   },
   {
     id: '2',
-    name: 'LCD panels 24"',
-    quantity: 18,
+    name: 'Desktop Monitor',
+    quantity: 1,
+    serial: 'LENOVO-AIO-27',
+    description: 'Lenovo IdeaCentre AIO 27IRH9 27" 100Hz All-in-One - Core i7',
+    status: 'In Use',
+    image: 'https://placehold.co/600x400/0F172A/F59E0B?text=Lenovo+AIO',
     category: 'Hardware',
     updatedAt: nowIso(),
   },
   {
     id: '3',
-    name: 'Safety gloves (box)',
-    quantity: 8,
-    category: 'Hardware',
+    name: 'WMS License',
+    quantity: 1,
+    serial: 'LIC-WMS-2026',
+    description: 'Enterprise Warehouse Management System License key',
+    status: 'Damaged',
+    image: null,
+    category: 'Software',
     updatedAt: nowIso(),
   },
 ]
@@ -72,6 +89,8 @@ const INITIAL_HISTORY = [
   },
 ]
 
+const INITIAL_NOTIFICATIONS = []
+
 export const CATEGORIES = [
   'Hardware',
   'Software',
@@ -81,31 +100,64 @@ export function WarehouseProvider({ children }) {
   const { user } = useAuth()
   const [items, setItems] = useState(INITIAL_ITEMS)
   const [history, setHistory] = useState(INITIAL_HISTORY)
+  const [itemTypes, setItemTypes] = useState(INITIAL_TYPES)
+  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS)
+
+  const addCategoryType = useCallback((category, newType) => {
+    const cleanType = newType.trim();
+    if (!cleanType) return;
+    setItemTypes(prev => ({
+      ...prev,
+      [category]: [...(prev[category] || []), cleanType]
+    }))
+    setHistory((prev) => [
+      { id: `h${Date.now()}_at`, action: 'Type config', detail: `Added type "${cleanType}" to ${category}`, actor: user?.displayName ?? 'Admin', at: nowIso() },
+      ...prev
+    ])
+  }, [user])
+
+  const removeCategoryType = useCallback((category, typeToRemove) => {
+    setItemTypes(prev => ({
+      ...prev,
+      [category]: (prev[category] || []).filter(t => t !== typeToRemove)
+    }))
+    setHistory((prev) => [
+      { id: `h${Date.now()}_rt`, action: 'Type config', detail: `Removed type "${typeToRemove}" from ${category}`, actor: user?.displayName ?? 'Admin', at: nowIso() },
+      ...prev
+    ])
+  }, [user])
 
   const addItem = useCallback(
-    ({ name, quantity, category }) => {
+    ({ name, category, serial, description, status, image }) => {
       const actor = user?.displayName ?? 'Unknown'
-      const id = String(++idSeq)
       const ts = nowIso()
-      const record = {
-        id,
-        name: name.trim(),
-        quantity: Number(quantity),
-        category,
-        updatedAt: ts,
+      const targetId = String(++idSeq)
+      
+      const newRecord = { 
+        id: targetId, 
+        name, 
+        quantity: 1, 
+        serial,
+        description,
+        status,
+        image,
+        category, 
+        updatedAt: ts 
       }
-      setItems((prev) => [record, ...prev])
+
+      setItems((prev) => [newRecord, ...prev])
+
       setHistory((prev) => [
         {
-          id: `h${id}`,
-          action: 'Item created',
-          detail: `${record.name} — ${record.quantity} × ${record.category}`,
+          id: `h${Date.now()}_add`,
+          action: 'Asset registered',
+          detail: `${name} [SN: ${serial}] marked as ${status}`,
           actor,
           at: ts,
         },
         ...prev,
       ])
-      return record
+      return newRecord
     },
     [user],
   )
@@ -187,16 +239,116 @@ export function WarehouseProvider({ children }) {
     }
   }, [user])
 
+  const requestItemUse = useCallback((item) => {
+    if (!user) return
+    const newRequest = {
+      id: `req_${Date.now()}`,
+      type: 'USE_REQUEST',
+      itemId: item.id,
+      itemName: item.name,
+      requestedBy: user.displayName || user.username || 'Employee',
+      userId: user.id || user.username || 'emp',
+      status: 'PENDING',
+      createdAt: nowIso()
+    }
+    setNotifications(prev => [newRequest, ...prev])
+  }, [user])
+
+  const requestItemReturn = useCallback((item) => {
+    if (!user) return
+    const newRequest = {
+      id: `req_${Date.now()}`,
+      type: 'RETURN_REQUEST',
+      itemId: item.id,
+      itemName: item.name,
+      requestedBy: user.displayName || user.username || 'Employee',
+      userId: user.id || user.username || 'emp',
+      status: 'PENDING',
+      createdAt: nowIso()
+    }
+    setNotifications(prev => [newRequest, ...prev])
+  }, [user])
+
+  const requestItemDamage = useCallback((item) => {
+    if (!user) return
+    const newRequest = {
+      id: `req_${Date.now()}`,
+      type: 'DAMAGE_REQUEST',
+      itemId: item.id,
+      itemName: item.name,
+      requestedBy: user.displayName || user.username || 'Employee',
+      userId: user.id || user.username || 'emp',
+      status: 'PENDING',
+      createdAt: nowIso()
+    }
+    setNotifications(prev => [newRequest, ...prev])
+  }, [user])
+
+  const handleRequest = useCallback((reqId, action) => {
+    const actor = user?.displayName ?? 'Admin'
+    const ts = nowIso()
+
+
+    setNotifications(prev => {
+      return prev.map(req => {
+        if (req.id === reqId) {
+          if (action === 'approve') {
+            const isReturn = req.type === 'RETURN_REQUEST'
+            const isDamage = req.type === 'DAMAGE_REQUEST'
+            const newStatus = isReturn ? 'Available' : isDamage ? 'Damaged' : 'In Use'
+
+            // Update item status
+            setItems(itemsList => {
+              const idx = itemsList.findIndex(i => i.id === req.itemId)
+              if (idx !== -1) {
+                const next = [...itemsList]
+                next[idx] = { ...next[idx], status: newStatus, updatedAt: ts }
+                return next
+              }
+              return itemsList
+            })
+
+            // Add to history
+            setHistory(hPrev => [{
+              id: `h${Date.now()}_approve`,
+              action: isReturn ? 'Asset returned' : isDamage ? 'Asset damaged' : 'Asset assigned',
+              detail: isReturn
+                ? `${req.requestedBy} returned ${req.itemName} — now Available`
+                : isDamage
+                  ? `${req.requestedBy} reported ${req.itemName} as Damaged`
+                  : `Assigned ${req.itemName} to ${req.requestedBy}`,
+              actor,
+              at: ts
+            }, ...hPrev])
+
+            return { ...req, status: 'APPROVED' }
+          } else {
+            return { ...req, status: 'REJECTED' }
+          }
+        }
+        return req
+      })
+    })
+  }, [user])
+
   const value = useMemo(
     () => ({
       items,
       history,
+      itemTypes,
+      notifications,
       addItem,
       updateItem,
       deleteItem,
       dispatchItem,
+      addCategoryType,
+      removeCategoryType,
+      requestItemUse,
+      requestItemReturn,
+      requestItemDamage,
+      handleRequest
     }),
-    [items, history, addItem, updateItem, deleteItem, dispatchItem],
+    [items, history, itemTypes, notifications, addItem, updateItem, deleteItem, dispatchItem, addCategoryType, removeCategoryType, requestItemUse, requestItemReturn, requestItemDamage, handleRequest],
   )
 
   return (

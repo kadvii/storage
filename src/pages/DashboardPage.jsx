@@ -34,14 +34,12 @@ export default function DashboardPage() {
   const welcome = location.state?.loginWelcome
   const toastMessage = location.state?.toast
 
-  const totalQty = useMemo(
-    () => items.reduce((acc, i) => acc + i.quantity, 0),
-    [items],
-  )
-  const lowStock = useMemo(
-    () => items.filter((i) => i.quantity < 10).length,
-    [items],
-  )
+  const stats = useMemo(() => {
+    const available = items.filter(i => i.status === 'Available').length
+    const inUse = items.filter(i => i.status === 'In Use').length
+    const damaged = items.filter(i => i.status === 'Damaged').length
+    return { total: items.length, available, inUse, damaged }
+  }, [items])
 
   const recent = history.slice(0, 4)
 
@@ -98,26 +96,26 @@ export default function DashboardPage() {
       >
         <SummaryCard
           title="All Items"
-          value={items.length}
-          hint="Distinct items tracked in mock data."
+          value={stats.total}
+          hint="Total registered assets."
           tone="emerald"
         />
         <SummaryCard
-          title="Available Items"
-          value={totalQty.toLocaleString()}
-          hint="Sum of on-hand quantities."
+          title="Available"
+          value={stats.available}
+          hint="Assets ready to be assigned."
+          tone="emerald"
+        />
+        <SummaryCard
+          title="In Use"
+          value={stats.inUse}
+          hint="Assets currently deployed."
           tone="amber"
         />
         <SummaryCard
-          title="Items In Use"
-          value={lowStock}
-          hint="Items below 10 units."
-          tone="amber"
-        />
-        <SummaryCard
-          title="Damaged Items"
-          value={history.length}
-          hint="Rows in the activity log."
+          title="Damaged"
+          value={stats.damaged}
+          hint="Assets requiring attention."
           tone="red"
         />
       </section>

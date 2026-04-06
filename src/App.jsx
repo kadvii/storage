@@ -7,7 +7,8 @@ import AllItemsPage from './pages/AllItemsPage'
 import HistoryPage from './pages/HistoryPage'
 import AddEmployeePage from './pages/AddEmployeePage'
 import EmployeesListPage from './pages/EmployeesListPage'
-import DispatchItemPage from './pages/DispatchItemPage'
+import AdminCategoriesPage from './pages/AdminCategoriesPage'
+import NotificationsPage from './pages/NotificationsPage'
 
 import LoginPage from './pages/LoginPage'
 
@@ -34,9 +35,10 @@ export default function App() {
         <Route path="all-items" element={<AllItemsPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="add-item" element={<AddItemPage />} />
-        <Route path="dispatch-item" element={<DispatchItemPage />} />
         <Route path="add-employee" element={<AddEmployeePage />} />
         <Route path="employees" element={<EmployeesListPage />} />
+        <Route path="manage-categories" element={<AdminCategoriesPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
 
       </Route>
 
